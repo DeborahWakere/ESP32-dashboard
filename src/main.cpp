@@ -1,0 +1,226 @@
+#include <Arduino.h>
+#include <WiFi.h>
+#include <WebServer.h>
+#include "secrets.h"
+
+const int ledPin = 2;
+WebServer server(80);
+String page()
+{
+  return R"rawliteral( 
+
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>ESP32 Dashboard</title>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Arial,Helvetica,sans-serif;
+}
+
+body{
+background:linear-gradient(45deg, rgb(134, 158, 231) 0%, rgb(230, 241, 234) 100%);
+min-height:100vh;
+padding:20px;
+color:white;
+}
+
+.container{
+max-width:1200px;
+margin:auto;
+}
+
+header{
+padding:20px;
+border-radius:15px;
+margin-bottom:20px;
+}
+
+header h1{
+text-align:center;
+margin-bottom:15px;
+}
+
+.info{
+display:flex;
+justify-content:space-around;
+flex-wrap:wrap;
+}
+
+.card{
+padding:10px 20px;
+border-radius:10px;
+}
+
+.main{
+display:flex;
+gap:20px;
+flex-wrap:wrap;
+}
+
+.left{
+flex:1;
+min-width:320px;
+background:rgb(240, 195, 239);
+padding:20px;
+border-radius:15px;
+}
+
+.right{
+flex:1;
+min-width:320px;
+background:rgb(240, 195, 239);
+padding:20px;
+border-radius:15px;
+}
+
+.network{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:15px;
+margin:12px 0;
+background:rgba(255,255,255,.08);
+border-radius:12px;
+transition:.3s;
+}
+
+.network:hover{
+transform:translateX(5px);
+background:rgba(33,150,243,.25);
+}
+
+input{
+width:100%;
+padding:15px;
+border:none;
+border-radius:10px;
+margin-top:15px;
+font-size:18px;
+}
+
+button{
+margin-top:20px;
+width:100%;
+padding:15px;
+border:none;
+border-radius:12px;
+font-size:18px;
+background:rgb(18, 230, 234);
+color:white;
+cursor:pointer;
+transition:.3s;
+}
+
+button:hover{
+transform:scale(1.03);
+}
+
+.status{
+margin-top:40px;
+height:120px;
+border-radius:15px;
+display:flex;
+justify-content:center;
+align-items:center;
+font-size:40px;
+font-weight:bold;
+background:rgb(25, 118, 210);
+transition:.4s;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<header>
+<h1>ESP INFORMATION</h1>
+
+</header>
+<div class="main">
+<div class="left">
+<h2>Available Networks</h2>
+<button onclick="scanWifi()">🔄 Refresh Networks</button>
+<div id="wifiList">
+
+</div>
+</div>
+<div class="right">
+
+<h2>Device Control</h2>
+
+<input
+id="command"
+placeholder="Type ON or OFF">
+
+<button onclick="sendCommand()">
+SEND
+</button>
+
+<div
+id="status"
+class="status">
+
+OFF
+
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>
+)rawliteral";
+
+}
+void handleRoot()
+{
+  server.send(200, "text/html", page());
+}
+void handleOn(){
+  digitalWrite(ledPin, HIGH);
+  server.sendHeader("location", "/");
+  server.send(303);
+}
+void handleOff(){
+  digitalWrite(ledPin, LOW);
+  server.sendHeader("location", "/");
+  server.send(303);
+}
+
+void setup()
+{
+  Serial.begin(115200);
+  pinMode(ledPin, OUTPUT);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
+  }
+  Serial.println("Connected to WiFi");
+  Serial.println(WiFi.localIP());
+  server.on("/", handleRoot);
+  server.on("/on", handleOn);
+  server.on("/off", handleOff);
+  server.begin();
+}
+
+void loop()
+{
+  server.handleClient();
+}
